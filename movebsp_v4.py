@@ -15,10 +15,15 @@ SOURCES_FOLDER_NAME = "sources"
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0"
 
 SOURCE_GAMES = {
+    210: {"name": "Dark Messiah of Might and Magic Single Player", "subdir": "mm"},
+    213: {"name": "Dark Messiah of Might and Magic Multi-Player", "subdir": "mmsource"},
     220: {"name": "Half-Life 2", "subdir": "hl2"},
     240: {"name": "Counter-Strike: Source", "subdir": "cstrike"},
     280: {"name": "Half-Life: Source", "subdir": "hl1"},
-    360: {"name": "Half-Life Deathmatch: Source", "subdir": "hl2mp"},
+    300: {"name": "Day of Defeat: Source", "subdir": "dod"},
+    320: {"name": "Half-Life 2: Deathmatch", "subdir": "hl2mp"},
+    340: {"name": "Half-Life 2: Lost Coast", "subdir": "lostcoast"},
+    360: {"name": "Half-Life Deathmatch: Source", "subdir": "hl1mp"},
     380: {"name": "Half-Life 2: Episode One", "subdir": "episodic"},
     400: {"name": "Portal", "subdir": "portal"},
     420: {"name": "Half-Life 2: Episode Two", "subdir": "ep2"},
@@ -26,8 +31,40 @@ SOURCE_GAMES = {
     500: {"name": "Left 4 Dead", "subdir": "left4dead"},
     550: {"name": "Left 4 Dead 2", "subdir": "left4dead2"},
     620: {"name": "Portal 2", "subdir": "portal2"},
+    630: {"name": "Alien Swarm", "subdir": "swarm"},
     730: {"name": "Counter-Strike: Global Offensive", "subdir": "csgo"},
+    1300: {"name": "SiN Episodes: Emergence", "subdir": "episode1"},
+    2400: {"name": "The Ship", "subdir": "ship"},
+    2450: {"name": "Bloody Good Time", "subdir": "bgt"},
+    2600: {"name": "Vampire: The Masquerade - Bloodlines", "subdir": "vampire"},
+    4000: {"name": "Garry's Mod", "subdir": "garrysmod"},
+    17710: {"name": "Nuclear Dawn", "subdir": "nucleardawn"},
+    70000: {"name": "Dino D-Day", "subdir": "dinodday"},
+    91700: {"name": "E.Y.E: Divine Cybermancy", "subdir": "EYE"},
+    22200: {"name": "Zeno Clash", "subdir": "zenoclash"},
+    10220: {"name": "Postal III", "subdir": "postal3"},
+    203810: {"name": "Dear Esther", "subdir": "dearesther"},
+    221910: {"name": "The Stanley Parable", "subdir": "thestanleyparable"},
+    222880: {"name": "Insurgency", "subdir": "insurgency2"},
+    224260: {"name": "No More Room in Hell", "subdir": "nmrih"},
+    225600: {"name": "Blade Symphony", "subdir": "bladesymphony"},
+    238430: {"name": "Contagion", "subdir": "Contagion"},
+    244630: {"name": "NEOTOKYO°", "subdir": "neotokyo"},
+    251110: {"name": "INFRA", "subdir": "infra"},
+    265630: {"name": "Fistful of Frags", "subdir": "sdk"},
+    280740: {"name": "Aperture Tag: The Paint Gun Testing Initiative", "subdir": "aperturetag"},
+    303210: {"name": "The Beginner's Guide", "subdir": "thebeginnersguide"},
+    317400: {"name": "Portal Stories: Mel", "subdir": "portal_stories"},
+    362890: {"name": "Black Mesa", "subdir": "bms"},
+    447820: {"name": "Day of Infamy", "subdir": "dayofinfamy"},
+    723390: {"name": "Hunt Down The Freeman", "subdir": "hdtf"},
+    1224600: {"name": "G String", "subdir": "gstringv2"},
 }
+
+def has_maps_installed(game_path):
+    target_dir = os.path.join(game_path, "maps")
+    sources_dir = os.path.join(target_dir, "sources")
+    return os.path.exists(sources_dir)
 
 def main_menu():
     print("\nSource Map Manager")
@@ -58,7 +95,7 @@ def find_steam_installations():
                         path = line.split('"')[3].replace('\\\\', '\\')
                         library_folders.append(path)
     
-    return steam_paths + library_folders
+    return list(set(steam_paths + library_folders))
 
 def find_source_games():
     games = []
@@ -100,7 +137,9 @@ def select_source_game(games):
     
     print("\nFound Source games:")
     for i, game in enumerate(games, 1):
-        print(f"{i}. {game['name']} - {game['path']}")
+        color = "\033[96m" if has_maps_installed(game['path']) else ""
+        reset = "\033[0m" if color else ""
+        print(f"{i}. {color}{game['name']}{reset} - {game['path']}")
     
     while True:
         choice = input(f"\nSelect installation (1-{len(games)}), or 'q' to quit: ")
@@ -114,28 +153,31 @@ def select_source_game(games):
             pass
         print("Invalid selection!")
 
-def download_and_extract():
+def ensure_maps_available():
     try:
-        print("\nDownloading map package...")
-        headers = {'User-Agent': USER_AGENT}
-        with requests.get(DOWNLOAD_URL, headers=headers, stream=True) as r:
-            r.raise_for_status()
-            total_size = int(r.headers.get('content-length', 0))
-            with open(ARCHIVE_NAME, 'wb') as f:
-                downloaded = 0
-                for chunk in r.iter_content(chunk_size=8192):
-                    f.write(chunk)
-                    downloaded += len(chunk)
-                    print(f"\rProgress: {downloaded/1024/1024:.1f}MB / {total_size/1024/1024:.1f}MB", end='')
-        print("\nDownload complete!")
-
-        print("Extracting files...")
-        with py7zr.SevenZipFile(ARCHIVE_NAME, mode='r') as z:
-            z.extractall(SOURCE_DIR)
+        if not os.path.exists(SOURCE_DIR) or not os.listdir(SOURCE_DIR):
+            if not os.path.exists(ARCHIVE_NAME):
+                print("\nDownloading map package...")
+                headers = {'User-Agent': USER_AGENT}
+                with requests.get(DOWNLOAD_URL, headers=headers, stream=True) as r:
+                    r.raise_for_status()
+                    total_size = int(r.headers.get('content-length', 0))
+                    with open(ARCHIVE_NAME, 'wb') as f:
+                        downloaded = 0
+                        for chunk in r.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                            downloaded += len(chunk)
+                            print(f"\rProgress: {downloaded/1024/1024:.1f}MB / {total_size/1024/1024:.1f}MB", end='')
+                print("\nDownload complete!")
+            
+            print("Extracting files...")
+            with py7zr.SevenZipFile(ARCHIVE_NAME, mode='r') as z:
+                z.extractall(SOURCE_DIR)
         return True
     except Exception as e:
         print(f"\nError: {str(e)}")
         return False
+
 
 def get_latest_maps():
     from collections import defaultdict
@@ -221,9 +263,7 @@ def install_selected_maps(game_path, selected_maps):
 
     for map_file, src_path in selected_maps.items():
         dest = os.path.join(target_dir, map_file)
-        if os.path.exists(dest):
-            os.remove(dest)
-        shutil.move(src_path, dest)
+        shutil.copy2(src_path, dest)
         bsp_count += 1
         print(f"Installed: {map_file}")
 
@@ -232,13 +272,11 @@ def install_selected_maps(game_path, selected_maps):
             if not file.lower().endswith('.bsp'):
                 src_path = os.path.join(root, file)
                 dest = os.path.join(sources_dir, file)
-                if os.path.exists(dest):
-                    os.remove(dest)
-                shutil.move(src_path, dest)
+                shutil.copy2(src_path, dest)
                 other_count += 1
 
     print(f"\nInstalled {bsp_count} BSP files")
-    print(f"Moved {other_count} supporting files")
+    print(f"Copied {other_count} supporting files")
 
 def uninstall_maps(game_path):
     target_dir = os.path.join(game_path, TARGET_FOLDER_NAME)
@@ -289,19 +327,19 @@ def main():
             continue
             
         if choice == '1':
-            if not download_and_extract():
+            if not ensure_maps_available():
                 input("\nPress Enter to continue...")
                 continue
             available_maps = get_latest_maps()
             selected_maps = select_maps(available_maps)
             if selected_maps:
                 install_selected_maps(selected_path, selected_maps)
-            cleanup()
         elif choice == '2':
             uninstall_maps(selected_path)
             # No need for download/extract for uninstall now
-        
+            
         input("\nPress Enter to continue...")
+    cleanup()
 
 if __name__ == "__main__":
     main()
